@@ -201,16 +201,17 @@
 </template>
 
 <script>
-import { mapMutations, mapState } from "vuex";
+import { mapActions, mapMutations, mapState } from "vuex";
 import { uid } from "uid";
 import db from "../firebase/firebaseInit";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 import Loading from "../components/Loading.vue";
 
 export default {
   data() {
     return {
       dateOptions: { year: "numeric", month: "short", day: "numeric" },
+      docId: null,
       loading: null,
       billerStreetAddress: null,
       billerCity: null,
@@ -274,6 +275,7 @@ export default {
   },
   methods: {
     ...mapMutations(["TOGGLE_INVOICE", "TOGGLE_MODAL", "TOGGLE_EDIT_INVOICE"]),
+    ...mapActions(["UPDATE_INVOICE", "GET_INVOICES"]),
     checkClick(e) {
       if (e.target == this.$refs.invoiceWrap) {
         this.TOGGLE_MODAL();
@@ -345,8 +347,52 @@ export default {
       });
       this.loading = false;
       this.TOGGLE_INVOICE();
+      this.GET_INVOICES();
+    },
+    async updateInvoice() {
+      if (this.invoiceItemList.length <= 0) {
+        alert("Please ensure you filled out work items");
+        return;
+      }
+      this.loading = true;
+      this.calInvoiceTotal();
+      // eslint-disable-next-line no-unused-vars
+      const document = doc(db, "invoices", this.docId);
+      // eslint-disable-next-line no-unused-vars
+      const dataBase = await updateDoc(document, {
+        billerStreetAddress: this.billerStreetAddress,
+        billerCity: this.billerCity,
+        billerZipCode: this.billerZipCode,
+        billerCountry: this.billerCountry,
+        clientName: this.clientName,
+        clientEmail: this.clientEmail,
+        clientStreetAddress: this.clientStreetAddress,
+        clientCity: this.clientCity,
+        clientZipCode: this.clientZipCode,
+        clientCountry: this.clientCountry,
+        invoiceDate: this.invoiceDate,
+        invoiceDateUnix: this.invoiceDateUnix,
+        paymentTerms: this.paymentTerms,
+        paymentDueDate: this.paymentDueDate,
+        paymentDueDateUnix: this.paymentDueDateUnix,
+        productDescription: this.productDescription,
+        invoiceItemList: this.invoiceItemList,
+        invoiceTotal: this.invoiceTotal,
+      });
+
+      this.loading = false;
+
+      const data = {
+        docId: this.docId,
+        routeId: this.$route.params.invoiceId,
+      };
+      this.UPDATE_INVOICE(data);
     },
     submitForm() {
+      if (this.editInvoice) {
+        this.updateInvoice();
+        return;
+      }
       this.uploadInvoice();
     },
   },
